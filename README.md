@@ -3,10 +3,7 @@
 An Android application that changes the image on the **Glyph Matrix** of the back panel of the
 Nothing Phone (4a) Pro depending on the current weather. Each weather condition
 corresponds to one of your animations (`glyph_weather_*.json`).
-
-![preview](./glyph-weather/weather_icons_preview_notext.gif)
-
-
+https://github.com/byrbyrka/glyph-weather/blob/main/weather_icons_preview_notext.gif?raw=true
 ## How it works
 
 1. Every 15 minutes (WorkManager), the application determines the geolocation and requests
