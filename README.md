@@ -1,4 +1,5 @@
 # Glyph Weather — weather on Glyph Matrix (Nothing Phone (4a) Pro)
+### NOT WORK, UNDER DEVELOPMENT
 
 An Android application that changes the image on the **Glyph Matrix** of the back panel of the
 Nothing Phone (4a) Pro depending on the current weather. Each weather condition
