@@ -1,0 +1,12 @@
+gitignore
+.gradle/
+build/
+captures/
+.externalNativeBuild/
+.cxx/
+local.properties
+.idea/
+*.iml
+.kimchi/
+.claude/
+nul

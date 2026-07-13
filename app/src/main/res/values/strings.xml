@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Glyph Weather</string>
+
+    <string name="turn_on">Включить</string>
+    <string name="turn_off">Выключить</string>
+    <string name="refresh">Обновить сейчас</string>
+
+    <string name="status_on">Показ погоды на Glyph Matrix включён</string>
+    <string name="status_off">Показ выключен</string>
+    <string name="status_refreshing">Обновляю погоду…</string>
+
+    <string name="updated_never">Погода ещё не загружена</string>
+    <string name="updated_at">Обновлено: %1$s</string>
+
+    <string name="notif_title">Погода на Glyph</string>
+    <string name="notif_channel">Показ погоды</string>
+
+    <string name="hint">Анимация на задней панели меняется в зависимости от текущей погоды. Обновление раз в 15 минут.</string>
+</resources>
