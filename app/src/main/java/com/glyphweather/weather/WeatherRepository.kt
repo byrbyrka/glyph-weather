@@ -20,6 +20,10 @@ class WeatherRepository(private val context: Context) {
     }
 
     suspend fun refresh(): Result {
+        if (prefs.debugOverride) {
+            Log.d(TAG, "Debug override active, skipping real refresh")
+            return Result.NoLocation
+        }
         Log.d(TAG, "Refreshing weather...")
         val loc = location.current()
         if (loc == null) {

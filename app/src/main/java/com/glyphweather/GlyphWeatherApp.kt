@@ -7,7 +7,7 @@ import com.google.android.material.color.DynamicColors
 class GlyphWeatherApp : Application() {
     override fun onCreate() {
         super.onCreate()
-        // Применяем динамические цвета Material 3 (Android 12+)
+        // Apply Material 3 dynamic colors (Android 12+)
         DynamicColors.applyToActivitiesIfAvailable(this)
     }
 }

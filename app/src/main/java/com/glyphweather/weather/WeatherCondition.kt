@@ -6,16 +6,15 @@ package com.glyphweather.weather
  */
 enum class WeatherCondition(
     val asset: String,
-    val titleEn: String,
-    val titleRu: String
+    val titleEn: String
 ) {
-    SUNNY("glyph_weather_sunny.json", "Sunny", "Ясно"),
-    CLEAR_NIGHT("glyph_weather_clear_night.json", "Clear Night", "Ясная ночь"),
-    PARTLY_CLOUDY("glyph_weather_partly_cloudy.json", "Partly Cloudy", "Переменная облачность"),
-    CLOUDY("glyph_weather_cloudy.json", "Cloudy", "Облачно"),
-    RAIN("glyph_weather_rain.json", "Rain", "Дождь"),
-    SNOW("glyph_weather_snow.json", "Snow", "Снег"),
-    THUNDERSTORM("glyph_weather_thunderstorm.json", "Thunderstorm", "Гроза");
+    SUNNY("glyph_weather_sunny.json", "Sunny"),
+    CLEAR_NIGHT("glyph_weather_clear_night.json", "Clear Night"),
+    PARTLY_CLOUDY("glyph_weather_partly_cloudy.json", "Partly Cloudy"),
+    CLOUDY("glyph_weather_cloudy.json", "Cloudy"),
+    RAIN("glyph_weather_rain.json", "Rain"),
+    SNOW("glyph_weather_snow.json", "Snow"),
+    THUNDERSTORM("glyph_weather_thunderstorm.json", "Thunderstorm");
 
     companion object {
         /**

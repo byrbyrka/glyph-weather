@@ -2,19 +2,21 @@
 <resources>
     <string name="app_name">Glyph Weather</string>
 
-    <string name="turn_on">Включить</string>
-    <string name="turn_off">Выключить</string>
-    <string name="refresh">Обновить сейчас</string>
+    <string name="turn_on">Turn On</string>
+    <string name="turn_off">Turn Off</string>
+    <string name="refresh">Refresh Now</string>
 
-    <string name="status_on">Показ погоды на Glyph Matrix включён</string>
-    <string name="status_off">Показ выключен</string>
-    <string name="status_refreshing">Обновляю погоду…</string>
+    <string name="status_on">Weather display on Glyph Matrix is on</string>
+    <string name="status_off">Display is off</string>
+    <string name="status_refreshing">Refreshing weather…</string>
 
-    <string name="updated_never">Погода ещё не загружена</string>
-    <string name="updated_at">Обновлено: %1$s</string>
+    <string name="updated_never">Weather not loaded yet</string>
+    <string name="updated_at">Updated: %1$s</string>
 
-    <string name="notif_title">Погода на Glyph</string>
-    <string name="notif_channel">Показ погоды</string>
+    <string name="notif_title">Glyph Weather</string>
+    <string name="notif_channel">Weather Display</string>
 
-    <string name="hint">Анимация на задней панели меняется в зависимости от текущей погоды. Обновление раз в 15 минут.</string>
+    <string name="hint">The animation on the back panel changes based on the current weather. Updates every 15 minutes.</string>
+
+    <string name="action_debug_menu">Debug Menu</string>
 </resources>

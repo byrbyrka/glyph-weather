@@ -1,24 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- Доступ к Glyph Matrix -->
+    <!-- Access to the Glyph Matrix -->
     <uses-permission android:name="com.nothing.ketchum.permission.ENABLE" />
 
-    <!-- Погода/сеть -->
+    <!-- Weather/network -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
-    <!-- Геолокация для определения текущей погоды -->
+    <!-- Location for determining current weather -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
 
-    <!-- Foreground service, показывающий анимацию на матрице -->
+    <!-- Foreground service that renders the animation on the matrix -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
-    <!-- Автозапуск после перезагрузки устройства -->
+    <!-- Auto-start after device reboot -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
     <application
@@ -30,13 +30,13 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.GlyphWeather">
 
-        <!-- Метаданные для Glyph SDK v2.0 -->
+        <!-- Metadata for Glyph SDK v2.0 -->
         <meta-data
             android:name="NothingKey"
             android:value="glyph_weather_key" />
         <meta-data
             android:name="TargetDevice"
-            android:value="A142" />
+            android:value="A069P" />
         <meta-data
             android:name="targetNothingSDKVersion"
             android:value="140101" />
@@ -56,7 +56,7 @@
             android:foregroundServiceType="specialUse">
             <property
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="Отображение текущей погоды на Glyph Matrix" />
+                android:value="Displaying current weather on the Glyph Matrix" />
         </service>
 
         <receiver

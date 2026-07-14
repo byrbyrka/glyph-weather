@@ -10,7 +10,7 @@ import com.nothing.ketchum.GlyphMatrixManager
 
 /**
  * Controller for Nothing Glyph Matrix.
- * Supports Phone (2a) and Phone (2a) Plus.
+ * Registers against all known Glyph Matrix devices, prioritizing Phone (4a) Pro.
  */
 class GlyphMatrixController(private val context: Context) {
 
@@ -24,19 +24,26 @@ class GlyphMatrixController(private val context: Context) {
         override fun onServiceConnected(name: ComponentName?) {
             Log.d(TAG, "Glyph service connected. Registering device...")
             
-            // Try known matrix device IDs
+            // Try known matrix device IDs, target device (4a Pro) first
             val devices = listOf(
-                Glyph.DEVICE_23111,  // Phone (2a)
-                Glyph.DEVICE_25111p  // Phone (2a) Plus
+                Glyph.DEVICE_25111p, // Phone (4a) Pro
+                Glyph.DEVICE_25111,  // Phone (4a)
+                Glyph.DEVICE_24111,  // Phone (3a)
+                Glyph.DEVICE_23112,  // Phone (3)
+                Glyph.DEVICE_23113,  // Phone (2a) Plus
+                Glyph.DEVICE_23111   // Phone (2a)
             )
-            
+
             var success = false
             for (device in devices) {
                 try {
-                    manager?.register(device)
-                    Log.i(TAG, "Registered successfully for device: $device")
-                    success = true
-                    break
+                    if (manager?.register(device) == true) {
+                        Log.i(TAG, "Registered successfully for device: $device")
+                        success = true
+                        break
+                    } else {
+                        Log.w(TAG, "register() returned false for device: $device")
+                    }
                 } catch (e: Exception) {
                     Log.w(TAG, "Failed to register $device: ${e.message}")
                 }

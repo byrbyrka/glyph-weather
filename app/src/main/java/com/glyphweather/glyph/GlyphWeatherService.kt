@@ -135,7 +135,7 @@ class GlyphWeatherService : android.app.Service() {
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_stat_glyph)
             .setContentTitle(getString(R.string.app_name))
-            .setContentText(condition.titleRu + tempText)
+            .setContentText(condition.titleEn + tempText)
             .setOngoing(true)
             .setContentIntent(open)
             .setPriority(NotificationCompat.PRIORITY_LOW)

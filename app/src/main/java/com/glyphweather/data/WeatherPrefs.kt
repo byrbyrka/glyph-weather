@@ -34,6 +34,14 @@ class WeatherPrefs(context: Context) {
         get() = sp.getBoolean(KEY_ENABLED, false)
         set(value) = edit { putBoolean(KEY_ENABLED, value) }
 
+    /**
+     * Test mode (set from the hidden debug menu): while true, scheduled/manual
+     * weather refreshes must not overwrite [condition] with real data.
+     */
+    var debugOverride: Boolean
+        get() = sp.getBoolean(KEY_DEBUG_OVERRIDE, false)
+        set(value) = edit { putBoolean(KEY_DEBUG_OVERRIDE, value) }
+
     /** Atomic write of the entire weather state in one apply(). */
     fun setWeather(condition: WeatherCondition, temperatureC: Double, updated: Long) {
         edit {
@@ -48,5 +56,6 @@ class WeatherPrefs(context: Context) {
         private const val KEY_TEMP = "temperature"
         private const val KEY_UPDATED = "updated"
         private const val KEY_ENABLED = "enabled"
+        private const val KEY_DEBUG_OVERRIDE = "debug_override"
     }
 }

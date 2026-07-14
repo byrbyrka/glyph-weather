@@ -6,6 +6,8 @@ import android.os.Build
 import android.os.Bundle
 import android.text.format.DateUtils
 import android.util.Log
+import android.view.Menu
+import android.view.MenuItem
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -19,8 +21,13 @@ import com.glyphweather.databinding.ActivityMainBinding
 import com.glyphweather.glyph.GlyphAnimation
 import com.glyphweather.glyph.GlyphMatrix
 import com.glyphweather.glyph.GlyphWeatherService
+import com.glyphweather.weather.WeatherCondition
 import com.glyphweather.work.WeatherScheduler
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -69,13 +76,14 @@ class MainActivity : AppCompatActivity() {
     }
 
     private var pendingEnable = false
+    private var previewJob: Job? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         setSupportActionBar(binding.toolbar)
-        
+
         prefs = WeatherPrefs(this)
 
         binding.toggleButton.setOnClickListener {
@@ -91,10 +99,28 @@ class MainActivity : AppCompatActivity() {
         updatePreview()
     }
 
+    override fun onCreateOptionsMenu(menu: Menu): Boolean {
+        menuInflater.inflate(R.menu.main_menu, menu)
+        return true
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        if (item.itemId == R.id.action_debug) {
+            showDebugMenu()
+            return true
+        }
+        return super.onOptionsItemSelected(item)
+    }
+
     override fun onResume() {
         super.onResume()
         updateUi()
         updatePreview()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        previewJob?.cancel()
     }
 
     private fun requestEnable() {
@@ -135,7 +161,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun observeWork() {
         val wm = WorkManager.getInstance(this)
-        
+
         // Observe both periodic and one-shot updates
         wm.getWorkInfosForUniqueWorkLiveData(WeatherScheduler.PERIODIC).observe(this) { handleWorkInfos(it) }
         wm.getWorkInfosForUniqueWorkLiveData(WeatherScheduler.ONE_SHOT).observe(this) { handleWorkInfos(it) }
@@ -144,10 +170,10 @@ class MainActivity : AppCompatActivity() {
     private fun handleWorkInfos(infos: List<WorkInfo>?) {
         val info = infos?.firstOrNull() ?: return
         Log.d("MainActivity", "Work status changed: ${info.state}")
-        
+
         val isRunning = info.state == WorkInfo.State.RUNNING || info.state == WorkInfo.State.ENQUEUED
         binding.refreshButton.isEnabled = !isRunning
-        
+
         if (info.state.isFinished) {
             updateUi()
             updatePreview()
@@ -159,7 +185,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun updateUi() {
         val condition = prefs.condition
-        binding.conditionText.text = condition.titleRu
+        binding.conditionText.text = condition.titleEn
 
         val temp = prefs.temperatureC
         binding.tempText.text = if (temp.isNaN()) "—" else "${Math.round(temp)}°C"
@@ -181,15 +207,27 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
+    /** Loads the animation for the current condition and loops it in the on-screen preview. */
     private fun updatePreview() {
-        lifecycleScope.launch {
-            val grid = withContext(Dispatchers.IO) {
-                runCatching {
-                    GlyphAnimation.load(this@MainActivity, prefs.condition)
-                        .frames.firstOrNull()?.grid
-                }.getOrNull()
-            } ?: IntArray(GlyphMatrix.CELLS)
-            binding.previewView.setGrid(grid)
+        previewJob?.cancel()
+        previewJob = lifecycleScope.launch {
+            val frames = withContext(Dispatchers.IO) {
+                runCatching { GlyphAnimation.load(this@MainActivity, prefs.condition).frames }
+                    .getOrNull()
+            }.orEmpty()
+
+            if (frames.isEmpty()) {
+                binding.previewView.setGrid(IntArray(GlyphMatrix.CELLS))
+                return@launch
+            }
+
+            while (isActive) {
+                for (frame in frames) {
+                    if (!isActive) break
+                    binding.previewView.setGrid(frame.grid)
+                    delay(frame.durationMs.coerceAtLeast(30L))
+                }
+            }
         }
     }
 
@@ -200,4 +238,45 @@ class MainActivity : AppCompatActivity() {
     private fun hasBackgroundLocationPermission(): Boolean =
         Build.VERSION.SDK_INT < Build.VERSION_CODES.Q ||
         ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_BACKGROUND_LOCATION) == PackageManager.PERMISSION_GRANTED
+
+    /**
+     * Hidden debug menu: reachable from the toolbar overflow ("⋮") menu.
+     * Lets you force any [WeatherCondition] onto the Glyph Matrix (test mode) — while
+     * active, real weather refreshes no longer overwrite the forced condition.
+     */
+    private fun showDebugMenu() {
+        val conditions = WeatherCondition.entries
+        var selected = conditions.indexOf(prefs.condition).coerceAtLeast(0)
+
+        val info = buildString {
+            appendLine("Condition: ${prefs.condition.name}")
+            appendLine("Temperature: ${prefs.temperatureC}")
+            appendLine("Last updated: ${prefs.lastUpdated}")
+            appendLine("Display enabled: ${prefs.enabled}")
+            appendLine("Test mode: ${prefs.debugOverride}")
+        }
+
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Debug Menu")
+            .setMessage(info)
+            .setSingleChoiceItems(
+                conditions.map { it.titleEn }.toTypedArray(),
+                selected
+            ) { _, index -> selected = index }
+            .setPositiveButton("Apply") { _, _ ->
+                val condition = conditions[selected]
+                prefs.debugOverride = true
+                prefs.setWeather(condition, prefs.temperatureC, System.currentTimeMillis())
+                updateUi()
+                updatePreview()
+                Toast.makeText(this, "Test mode: ${condition.titleEn}", Toast.LENGTH_SHORT).show()
+            }
+            .setNeutralButton("Turn Off Test Mode") { _, _ ->
+                prefs.debugOverride = false
+                Toast.makeText(this, "Test mode off", Toast.LENGTH_SHORT).show()
+                WeatherScheduler.refreshNow(this)
+            }
+            .setNegativeButton("Close", null)
+            .show()
+    }
 }
