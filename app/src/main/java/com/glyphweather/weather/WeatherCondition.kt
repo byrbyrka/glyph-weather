@@ -1,8 +1,18 @@
 package com.glyphweather.weather
 
 /**
+ * Which Glyph animation set to render. [asset] paths are relative to
+ * app/src/main/assets/. [LEGACY] is the original hand-authored pack;
+ * [NEW] is the smoother, more dynamic pack under assets/new_pack/.
+ */
+enum class IconPack(val assetDir: String, val titleEn: String) {
+    LEGACY("", "Classic"),
+    NEW("new_pack/", "Smooth (New)")
+}
+
+/**
  * Weather conditions, each corresponding to one Glyph Matrix animation
- * (asset in app/src/main/assets/).
+ * (asset filename shared by both icon packs, resolved via [IconPack.assetDir]).
  */
 enum class WeatherCondition(
     val asset: String,

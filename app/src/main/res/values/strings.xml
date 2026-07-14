@@ -9,6 +9,7 @@
     <string name="status_on">Weather display on Glyph Matrix is on</string>
     <string name="status_off">Display is off</string>
     <string name="status_refreshing">Refreshing weather…</string>
+    <string name="status_test_mode">Test mode active — tap Refresh to return to live weather</string>
 
     <string name="updated_never">Weather not loaded yet</string>
     <string name="updated_at">Updated: %1$s</string>
@@ -19,4 +20,17 @@
     <string name="hint">The animation on the back panel changes based on the current weather. Updates every 15 minutes.</string>
 
     <string name="action_debug_menu">Debug Menu</string>
+    <string name="action_weather_source">Weather Source</string>
+
+    <string name="weather_source_hint">Custom weather API URL. Must return JSON shaped like Open-Meteo: a "current" object with weather_code, is_day, and temperature_2m fields.</string>
+    <string name="weather_source_url_hint">API URL template</string>
+    <string name="weather_source_url_helper">Use {lat}, {lon}, and {key} as placeholders</string>
+    <string name="weather_source_key_hint">API key (optional)</string>
+    <string name="weather_source_reset">Reset to Open-Meteo</string>
+    <string name="weather_source_saved">Weather source saved</string>
+    <string name="weather_source_reset_done">Reset to Open-Meteo (default)</string>
+    <string name="weather_source_invalid">URL must contain {lat} and {lon} placeholders</string>
+
+    <string name="icon_pack_toggle">Switch icon pack</string>
+    <string name="icon_pack_switched">Icon pack: %1$s</string>
 </resources>

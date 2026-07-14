@@ -8,6 +8,9 @@ import android.text.format.DateUtils
 import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
+import android.widget.RadioButton
+import android.widget.RadioGroup
+import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -21,9 +24,13 @@ import com.glyphweather.databinding.ActivityMainBinding
 import com.glyphweather.glyph.GlyphAnimation
 import com.glyphweather.glyph.GlyphMatrix
 import com.glyphweather.glyph.GlyphWeatherService
+import com.glyphweather.weather.IconPack
+import com.glyphweather.weather.OpenMeteoClient
 import com.glyphweather.weather.WeatherCondition
 import com.glyphweather.work.WeatherScheduler
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.google.android.material.materialswitch.MaterialSwitch
+import com.google.android.material.textfield.TextInputEditText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -49,28 +56,12 @@ class MainActivity : AppCompatActivity() {
     ) { results ->
         val granted = results.values.all { it }
         if (pendingEnable) {
-            if (granted) {
-                requestBackgroundPermission()
-            } else {
-                pendingEnable = false
-                updateUi()
-                Toast.makeText(this, "Permissions required for weather updates", Toast.LENGTH_LONG).show()
-            }
-        }
-    }
-
-    private val backgroundPermissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { granted ->
-        if (pendingEnable) {
             pendingEnable = false
             if (granted) {
                 doEnable()
             } else {
                 updateUi()
-                Toast.makeText(this, "Background location is recommended", Toast.LENGTH_SHORT).show()
-                // Still try to enable if we have at least foreground
-                if (hasLocationPermission()) doEnable()
+                Toast.makeText(this, "Permissions required for weather updates", Toast.LENGTH_LONG).show()
             }
         }
     }
@@ -90,8 +81,19 @@ class MainActivity : AppCompatActivity() {
             if (prefs.enabled) doDisable() else requestEnable()
         }
         binding.refreshButton.setOnClickListener {
+            if (prefs.debugOverride) {
+                prefs.debugOverride = false
+                Toast.makeText(this, "Test mode off, refreshing...", Toast.LENGTH_SHORT).show()
+                updateUi()
+            } else {
+                Toast.makeText(this, "Refreshing...", Toast.LENGTH_SHORT).show()
+            }
             WeatherScheduler.refreshNow(this)
-            Toast.makeText(this, "Refreshing...", Toast.LENGTH_SHORT).show()
+        }
+        binding.iconPackButton.setOnClickListener {
+            prefs.iconPack = if (prefs.iconPack == IconPack.NEW) IconPack.LEGACY else IconPack.NEW
+            updatePreview()
+            Toast.makeText(this, getString(R.string.icon_pack_switched, prefs.iconPack.titleEn), Toast.LENGTH_SHORT).show()
         }
 
         observeWork()
@@ -105,9 +107,15 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        if (item.itemId == R.id.action_debug) {
-            showDebugMenu()
-            return true
+        when (item.itemId) {
+            R.id.action_debug -> {
+                showDebugMenu()
+                return true
+            }
+            R.id.action_weather_source -> {
+                showWeatherSourceMenu()
+                return true
+            }
         }
         return super.onOptionsItemSelected(item)
     }
@@ -124,22 +132,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun requestEnable() {
-        pendingEnable = true
         if (!hasLocationPermission()) {
+            pendingEnable = true
             permissionLauncher.launch(foregroundPermissions)
-        } else if (!hasBackgroundLocationPermission()) {
-            requestBackgroundPermission()
         } else {
-            pendingEnable = false
-            doEnable()
-        }
-    }
-
-    private fun requestBackgroundPermission() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && !hasBackgroundLocationPermission()) {
-            backgroundPermissionLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
-        } else {
-            pendingEnable = false
             doEnable()
         }
     }
@@ -202,9 +198,11 @@ class MainActivity : AppCompatActivity() {
         binding.toggleButton.text = getString(
             if (prefs.enabled) R.string.turn_off else R.string.turn_on
         )
-        binding.statusText.text = getString(
-            if (prefs.enabled) R.string.status_on else R.string.status_off
-        )
+        binding.statusText.text = if (prefs.debugOverride) {
+            getString(R.string.status_test_mode)
+        } else {
+            getString(if (prefs.enabled) R.string.status_on else R.string.status_off)
+        }
     }
 
     /** Loads the animation for the current condition and loops it in the on-screen preview. */
@@ -212,7 +210,7 @@ class MainActivity : AppCompatActivity() {
         previewJob?.cancel()
         previewJob = lifecycleScope.launch {
             val frames = withContext(Dispatchers.IO) {
-                runCatching { GlyphAnimation.load(this@MainActivity, prefs.condition).frames }
+                runCatching { GlyphAnimation.load(this@MainActivity, prefs.condition, prefs.iconPack).frames }
                     .getOrNull()
             }.orEmpty()
 
@@ -235,48 +233,115 @@ class MainActivity : AppCompatActivity() {
         ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
         ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
 
-    private fun hasBackgroundLocationPermission(): Boolean =
-        Build.VERSION.SDK_INT < Build.VERSION_CODES.Q ||
-        ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_BACKGROUND_LOCATION) == PackageManager.PERMISSION_GRANTED
-
     /**
      * Hidden debug menu: reachable from the toolbar overflow ("⋮") menu.
-     * Lets you force any [WeatherCondition] onto the Glyph Matrix (test mode) — while
-     * active, real weather refreshes no longer overwrite the forced condition.
+     * The "Test mode" switch is the on/off control: turning it ON forces the condition
+     * selected below onto the Glyph Matrix and stops real weather refreshes from
+     * overwriting it; turning it OFF returns to live weather immediately.
      */
     private fun showDebugMenu() {
         val conditions = WeatherCondition.entries
-        var selected = conditions.indexOf(prefs.condition).coerceAtLeast(0)
+        val dialogView = layoutInflater.inflate(R.layout.dialog_debug, null)
+        val infoText = dialogView.findViewById<TextView>(R.id.debugInfoText)
+        val testModeSwitch = dialogView.findViewById<MaterialSwitch>(R.id.testModeSwitch)
+        val radioGroup = dialogView.findViewById<RadioGroup>(R.id.conditionRadioGroup)
 
-        val info = buildString {
+        infoText.text = buildString {
             appendLine("Condition: ${prefs.condition.name}")
             appendLine("Temperature: ${prefs.temperatureC}")
             appendLine("Last updated: ${prefs.lastUpdated}")
             appendLine("Display enabled: ${prefs.enabled}")
-            appendLine("Test mode: ${prefs.debugOverride}")
+        }
+
+        conditions.forEach { condition ->
+            val button = RadioButton(this).apply {
+                text = condition.titleEn
+                id = condition.ordinal
+                isChecked = condition == prefs.condition
+            }
+            radioGroup.addView(button)
+        }
+
+        fun setRadioGroupEnabled(enabled: Boolean) {
+            radioGroup.alpha = if (enabled) 1f else 0.4f
+            for (i in 0 until radioGroup.childCount) {
+                radioGroup.getChildAt(i).isEnabled = enabled
+            }
+        }
+
+        testModeSwitch.isChecked = prefs.debugOverride
+        setRadioGroupEnabled(prefs.debugOverride)
+
+        testModeSwitch.setOnCheckedChangeListener { _, isChecked ->
+            setRadioGroupEnabled(isChecked)
+            prefs.debugOverride = isChecked
+            if (isChecked) {
+                val condition = conditions[radioGroup.checkedRadioButtonId.coerceAtLeast(0)]
+                prefs.setWeather(condition, prefs.temperatureC, System.currentTimeMillis())
+                // Make sure the selection is actually visible on the physical Glyph Matrix,
+                // even if the display toggle was off.
+                prefs.enabled = true
+                GlyphWeatherService.start(this)
+                Toast.makeText(this, "Test mode on: ${condition.titleEn}", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(this, "Test mode off, refreshing...", Toast.LENGTH_SHORT).show()
+                WeatherScheduler.refreshNow(this)
+            }
+            updateUi()
+            updatePreview()
+        }
+
+        radioGroup.setOnCheckedChangeListener { _, checkedId ->
+            if (!testModeSwitch.isChecked || checkedId < 0) return@setOnCheckedChangeListener
+            val condition = conditions[checkedId]
+            prefs.setWeather(condition, prefs.temperatureC, System.currentTimeMillis())
+            updateUi()
+            updatePreview()
+            Toast.makeText(this, "Test mode: ${condition.titleEn}", Toast.LENGTH_SHORT).show()
         }
 
         MaterialAlertDialogBuilder(this)
             .setTitle("Debug Menu")
-            .setMessage(info)
-            .setSingleChoiceItems(
-                conditions.map { it.titleEn }.toTypedArray(),
-                selected
-            ) { _, index -> selected = index }
-            .setPositiveButton("Apply") { _, _ ->
-                val condition = conditions[selected]
-                prefs.debugOverride = true
-                prefs.setWeather(condition, prefs.temperatureC, System.currentTimeMillis())
-                updateUi()
-                updatePreview()
-                Toast.makeText(this, "Test mode: ${condition.titleEn}", Toast.LENGTH_SHORT).show()
-            }
-            .setNeutralButton("Turn Off Test Mode") { _, _ ->
-                prefs.debugOverride = false
-                Toast.makeText(this, "Test mode off", Toast.LENGTH_SHORT).show()
+            .setView(dialogView)
+            .setPositiveButton("Close", null)
+            .show()
+    }
+
+    /**
+     * "Weather Source" menu: lets the user point the app at a custom weather API/service
+     * instead of the built-in Open-Meteo default. The URL is a template with {lat}, {lon},
+     * and {key} placeholders — whatever service is configured must return JSON shaped like
+     * Open-Meteo's `current` object (weather_code, is_day, temperature_2m).
+     */
+    private fun showWeatherSourceMenu() {
+        val dialogView = layoutInflater.inflate(R.layout.dialog_weather_source, null)
+        val urlInput = dialogView.findViewById<TextInputEditText>(R.id.urlTemplateInput)
+        val keyInput = dialogView.findViewById<TextInputEditText>(R.id.apiKeyInput)
+
+        urlInput.setText(prefs.weatherUrlTemplate)
+        keyInput.setText(prefs.weatherApiKey)
+
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.action_weather_source)
+            .setView(dialogView)
+            .setPositiveButton("Save") { _, _ ->
+                val url = urlInput.text?.toString()?.trim().orEmpty()
+                if (!url.contains("{lat}") || !url.contains("{lon}")) {
+                    Toast.makeText(this, getString(R.string.weather_source_invalid), Toast.LENGTH_LONG).show()
+                    return@setPositiveButton
+                }
+                prefs.weatherUrlTemplate = url
+                prefs.weatherApiKey = keyInput.text?.toString()?.trim().orEmpty()
+                Toast.makeText(this, getString(R.string.weather_source_saved), Toast.LENGTH_SHORT).show()
                 WeatherScheduler.refreshNow(this)
             }
-            .setNegativeButton("Close", null)
+            .setNeutralButton(R.string.weather_source_reset) { _, _ ->
+                prefs.weatherUrlTemplate = OpenMeteoClient.DEFAULT_URL_TEMPLATE
+                prefs.weatherApiKey = ""
+                Toast.makeText(this, getString(R.string.weather_source_reset_done), Toast.LENGTH_SHORT).show()
+                WeatherScheduler.refreshNow(this)
+            }
+            .setNegativeButton("Cancel", null)
             .show()
     }
 }

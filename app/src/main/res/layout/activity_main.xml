@@ -44,47 +44,70 @@
                 app:cardCornerRadius="28dp"
                 app:cardElevation="0dp">
 
-                <LinearLayout
+                <FrameLayout
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="vertical"
-                    android:gravity="center_horizontal"
-                    android:padding="24dp">
+                    android:layout_height="wrap_content">
 
-                    <com.glyphweather.ui.GlyphPreviewView
-                        android:id="@+id/previewView"
-                        android:layout_width="220dp"
-                        android:layout_height="220dp" />
-
-                    <TextView
-                        android:id="@+id/conditionText"
-                        android:layout_width="wrap_content"
+                    <LinearLayout
+                        android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="—"
-                        android:textAppearance="?attr/textAppearanceTitleLarge"
-                        android:textColor="?attr/colorOnSurface"
-                        android:layout_marginTop="20dp" />
+                        android:orientation="vertical"
+                        android:gravity="center_horizontal"
+                        android:padding="24dp">
 
-                    <TextView
-                        android:id="@+id/tempText"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="—"
-                        android:textAppearance="?attr/textAppearanceDisplayMedium"
-                        android:textColor="?attr/colorPrimary"
-                        android:textStyle="bold"
-                        android:layout_marginTop="4dp" />
+                        <com.glyphweather.ui.GlyphPreviewView
+                            android:id="@+id/previewView"
+                            android:layout_width="220dp"
+                            android:layout_height="220dp" />
 
-                    <TextView
-                        android:id="@+id/updatedText"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/updated_never"
-                        android:textAppearance="?attr/textAppearanceLabelMedium"
-                        android:textColor="?attr/colorOnSurfaceVariant"
-                        android:layout_marginTop="8dp" />
+                        <TextView
+                            android:id="@+id/conditionText"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="—"
+                            android:textAppearance="?attr/textAppearanceTitleLarge"
+                            android:textColor="?attr/colorOnSurface"
+                            android:layout_marginTop="20dp" />
 
-                </LinearLayout>
+                        <TextView
+                            android:id="@+id/tempText"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="—"
+                            android:textAppearance="?attr/textAppearanceDisplayMedium"
+                            android:textColor="?attr/colorPrimary"
+                            android:textStyle="bold"
+                            android:layout_marginTop="4dp" />
+
+                        <TextView
+                            android:id="@+id/updatedText"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/updated_never"
+                            android:textAppearance="?attr/textAppearanceLabelMedium"
+                            android:textColor="?attr/colorOnSurfaceVariant"
+                            android:layout_marginTop="8dp" />
+
+                    </LinearLayout>
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/iconPackButton"
+                        style="@style/Widget.Material3.Button.IconButton.Filled.Tonal"
+                        android:layout_width="36dp"
+                        android:layout_height="36dp"
+                        android:layout_gravity="top|end"
+                        android:layout_margin="10dp"
+                        android:insetLeft="0dp"
+                        android:insetTop="0dp"
+                        android:insetRight="0dp"
+                        android:insetBottom="0dp"
+                        app:icon="@drawable/ic_icon_pack"
+                        app:iconGravity="textStart"
+                        app:iconPadding="0dp"
+                        app:iconSize="18dp"
+                        android:contentDescription="@string/icon_pack_toggle" />
+
+                </FrameLayout>
             </com.google.android.material.card.MaterialCardView>
 
             <com.google.android.material.card.MaterialCardView

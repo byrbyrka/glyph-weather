@@ -1,6 +1,7 @@
 package com.glyphweather.glyph
 
 import android.content.Context
+import com.glyphweather.weather.IconPack
 import com.glyphweather.weather.WeatherCondition
 import org.json.JSONObject
 
@@ -66,9 +67,14 @@ class GlyphAnimation(
     val frames: List<GlyphFrame>
 ) {
     companion object {
-        /** Loads and parses an asset for the specified weather condition. */
-        fun load(context: Context, condition: WeatherCondition): GlyphAnimation {
-            val text = context.assets.open(condition.asset)
+        /** Loads and parses an asset for the specified weather condition and icon pack. */
+        fun load(
+            context: Context,
+            condition: WeatherCondition,
+            pack: IconPack = IconPack.NEW
+        ): GlyphAnimation {
+            val path = pack.assetDir + condition.asset
+            val text = context.assets.open(path)
                 .bufferedReader().use { it.readText() }
             val json = JSONObject(text)
             val framesJson = json.getJSONArray("frames")

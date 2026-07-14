@@ -101,10 +101,8 @@ The interval can be set from **1 minute to 60 minutes** in the app settings.
 
 ## Troubleshooting
 
-- **No location in background**: make sure `ACCESS_BACKGROUND_LOCATION` is
-  granted.
 - **Glyph does not change after background update**: the service reads the
   saved weather state on every animation cycle, so the glyph should switch
   automatically.
-- **After reboot the glyph is off**: ensure the app has `RECEIVE_BOOT_COMPLETED`
-  permission; the service restarts automatically if the toggle was on.
+- **After reboot the glyph is off**: the app does not auto-start after a
+  device reboot; reopen it and turn the display back on manually.

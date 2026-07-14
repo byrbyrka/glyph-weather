@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingHorizontal="24dp"
+    android:paddingTop="8dp"
+    android:paddingBottom="8dp">
+
+    <TextView
+        android:id="@+id/debugInfoText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textAppearance="?attr/textAppearanceBodySmall"
+        android:textColor="?attr/colorOnSurfaceVariant"
+        android:layout_marginBottom="16dp" />
+
+    <com.google.android.material.materialswitch.MaterialSwitch
+        android:id="@+id/testModeSwitch"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Test mode (force a condition below)"
+        android:layout_marginBottom="8dp" />
+
+    <RadioGroup
+        android:id="@+id/conditionRadioGroup"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical" />
+
+</LinearLayout>

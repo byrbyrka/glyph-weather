@@ -33,7 +33,12 @@ class WeatherRepository(private val context: Context) {
         Log.d(TAG, "Location obtained: ${loc.latitude}, ${loc.longitude}")
 
         return try {
-            val weather = OpenMeteoClient.fetch(loc.latitude, loc.longitude)
+            val weather = OpenMeteoClient.fetch(
+                urlTemplate = prefs.weatherUrlTemplate,
+                lat = loc.latitude,
+                lon = loc.longitude,
+                apiKey = prefs.weatherApiKey
+            )
             Log.d(TAG, "Weather fetched: ${weather.condition}, ${weather.temperatureC}°C")
             
             prefs.setWeather(
@@ -54,7 +59,7 @@ class WeatherRepository(private val context: Context) {
         t is IOException -> true
         t is SecurityException -> false
         t is JSONException -> false
-        t is RuntimeException && (t.message ?: "").startsWith("Open-Meteo HTTP") -> true
+        t is RuntimeException && (t.message ?: "").startsWith("Weather API HTTP") -> true
         else -> false
     }
 

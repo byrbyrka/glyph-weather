@@ -15,6 +15,7 @@ import androidx.core.content.ContextCompat
 import com.glyphweather.R
 import com.glyphweather.data.WeatherPrefs
 import com.glyphweather.ui.MainActivity
+import com.glyphweather.weather.IconPack
 import com.glyphweather.weather.WeatherCondition
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -71,16 +72,19 @@ class GlyphWeatherService : android.app.Service() {
 
     private suspend fun playLoop() {
         var lastCondition: WeatherCondition? = null
+        var lastPack: IconPack? = null
         var animation: GlyphAnimation? = null
 
         while (scope.isActive) {
             val currentCondition = prefs.condition
-            
-            // Reload animation ONLY if condition changed or not loaded yet
-            if (currentCondition != lastCondition || animation == null) {
+            val currentPack = prefs.iconPack
+
+            // Reload animation ONLY if condition/pack changed or not loaded yet
+            if (currentCondition != lastCondition || currentPack != lastPack || animation == null) {
                 lastCondition = currentCondition
+                lastPack = currentPack
                 animation = try {
-                    GlyphAnimation.load(this@GlyphWeatherService, currentCondition)
+                    GlyphAnimation.load(this@GlyphWeatherService, currentCondition, currentPack)
                 } catch (e: CancellationException) {
                     throw e
                 } catch (t: Throwable) {
@@ -99,9 +103,9 @@ class GlyphWeatherService : android.app.Service() {
 
             for (frame in frames) {
                 if (!scope.isActive) break
-                // If condition changed mid-animation, break to reload
-                if (prefs.condition != lastCondition) break
-                
+                // If condition or icon pack changed mid-animation, break to reload
+                if (prefs.condition != lastCondition || prefs.iconPack != lastPack) break
+
                 controller.show(frame.grid)
                 delay(frame.durationMs.coerceAtLeast(30L))
             }
@@ -118,8 +122,8 @@ class GlyphWeatherService : android.app.Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     private fun startForegroundCompat(id: Int, notification: Notification) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            startForeground(id, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            startForeground(id, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION)
         } else {
             startForeground(id, notification)
         }
