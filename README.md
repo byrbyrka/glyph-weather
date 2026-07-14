@@ -1,6 +1,4 @@
 # Glyph Weather — weather on Glyph Matrix (Nothing Phone (4a) Pro)
-### NOT WORK, UNDER DEVELOPMENT
-<sub><sup><sub><sup>ai slop code</sup></sub></sup></sub>
 
 An Android application that changes the image on the **Glyph Matrix** of the back panel of the
 Nothing Phone (4a) Pro depending on the current weather. Each weather condition
@@ -89,3 +87,5 @@ app/src/main/
 Frame values are passed as brightness `0..255` in a 13×13=169 array
 (`setAppMatrixFrame`). If the layout on a specific firmware is different, edit
 only `GlyphMatrix.expandToGrid()` in `GlyphFrameAnimation.kt`; no need to touch the rest of the code.
+
+<sub><sup><sub><sup><sub><sup><sub><sup>ai slop code</sup></sub></sup></sub></sup></sub></sup></sub>
