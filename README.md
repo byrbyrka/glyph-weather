@@ -4,7 +4,7 @@ An Android application that changes the image on the **Glyph Matrix** of the bac
 Nothing Phone (4a) Pro depending on the current weather. Each weather condition
 corresponds to one of your animations (`glyph_weather_*.json`).
 
-new icons
+new icons  (by default)
 
 <img width="890" height="450" alt="preview_all_notext" src="https://github.com/user-attachments/assets/317b746a-e2bb-43ca-8e9b-32ddf0563ac1" />
 
