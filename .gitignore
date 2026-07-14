@@ -10,3 +10,8 @@ local.properties
 .kimchi/
 .claude/
 nul
+
+# Release signing — never commit keystores or passwords
+*.jks
+*.keystore
+keystore.properties

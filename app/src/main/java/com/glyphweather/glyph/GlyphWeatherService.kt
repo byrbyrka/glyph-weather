@@ -7,6 +7,8 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.hardware.Sensor
+import android.hardware.SensorManager
 import android.os.Build
 import android.os.IBinder
 import android.util.Log
@@ -14,6 +16,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.glyphweather.R
 import com.glyphweather.data.WeatherPrefs
+import com.glyphweather.sensor.ShakeDetector
 import com.glyphweather.ui.MainActivity
 import com.glyphweather.weather.IconPack
 import com.glyphweather.weather.WeatherCondition
@@ -40,12 +43,34 @@ class GlyphWeatherService : android.app.Service() {
 
     private var playJob: Job? = null
 
+    private lateinit var sensorManager: SensorManager
+    private var shakeDetector: ShakeDetector? = null
+
+    @Volatile private var temperatureOverrideUntil: Long = 0L
+    @Volatile private var temperatureGrid: IntArray? = null
+
     override fun onCreate() {
         super.onCreate()
         prefs = WeatherPrefs(this)
         controller = GlyphMatrixController(this)
         controller.connect()
         createChannel()
+        registerShakeDetector()
+    }
+
+    private fun registerShakeDetector() {
+        sensorManager = getSystemService(SensorManager::class.java)
+        val accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER) ?: return
+        val detector = ShakeDetector { onShakeDetected() }
+        shakeDetector = detector
+        sensorManager.registerListener(detector, accelerometer, SensorManager.SENSOR_DELAY_GAME)
+    }
+
+    private fun onShakeDetected() {
+        val temp = prefs.temperatureC
+        if (temp.isNaN()) return
+        temperatureGrid = GlyphDigits.renderTemperature(temp)
+        temperatureOverrideUntil = System.currentTimeMillis() + TEMPERATURE_DISPLAY_MS
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -76,6 +101,13 @@ class GlyphWeatherService : android.app.Service() {
         var animation: GlyphAnimation? = null
 
         while (scope.isActive) {
+            val overrideGrid = temperatureGrid
+            if (overrideGrid != null && System.currentTimeMillis() < temperatureOverrideUntil) {
+                controller.show(overrideGrid)
+                delay(TEMPERATURE_POLL_MS)
+                continue
+            }
+
             val currentCondition = prefs.condition
             val currentPack = prefs.iconPack
 
@@ -105,6 +137,8 @@ class GlyphWeatherService : android.app.Service() {
                 if (!scope.isActive) break
                 // If condition or icon pack changed mid-animation, break to reload
                 if (prefs.condition != lastCondition || prefs.iconPack != lastPack) break
+                // Shake detected mid-animation: break out to show the temperature immediately
+                if (temperatureGrid != null && System.currentTimeMillis() < temperatureOverrideUntil) break
 
                 controller.show(frame.grid)
                 delay(frame.durationMs.coerceAtLeast(30L))
@@ -113,6 +147,7 @@ class GlyphWeatherService : android.app.Service() {
     }
 
     override fun onDestroy() {
+        shakeDetector?.let { sensorManager.unregisterListener(it) }
         playJob?.cancel()
         controller.disconnect()
         scope.cancel()
@@ -162,6 +197,8 @@ class GlyphWeatherService : android.app.Service() {
         private const val TAG = "GlyphWeatherService"
         private const val CHANNEL_ID = "glyph_weather"
         private const val NOTIF_ID = 42
+        private const val TEMPERATURE_DISPLAY_MS = 3000L
+        private const val TEMPERATURE_POLL_MS = 200L
         const val ACTION_STOP = "com.glyphweather.action.STOP"
 
         fun start(context: Context) {

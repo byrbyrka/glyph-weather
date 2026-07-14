@@ -1,8 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <!-- Access to the Glyph Matrix -->
     <uses-permission android:name="com.nothing.ketchum.permission.ENABLE" />
+
+    <!--
+      WorkManager's own manifest declares RECEIVE_BOOT_COMPLETED (for its disabled
+      RescheduleReceiver) and WAKE_LOCK. Neither is used by this app — we don't have
+      a boot receiver — but the manifest merger pulls them in from the dependency by
+      default. That combination (boot persistence + wake lock + location + foreground
+      service) matches heuristic spyware signatures in some AV engines, so explicitly
+      strip them back out.
+    -->
+    <uses-permission
+        android:name="android.permission.RECEIVE_BOOT_COMPLETED"
+        tools:node="remove" />
+    <uses-permission
+        android:name="android.permission.WAKE_LOCK"
+        tools:node="remove" />
 
     <!-- Weather/network -->
     <uses-permission android:name="android.permission.INTERNET" />
@@ -50,6 +66,16 @@
             android:name=".glyph.GlyphWeatherService"
             android:exported="false"
             android:foregroundServiceType="location" />
+
+        <!--
+          This app has no boot receiver of its own. Explicitly disable WorkManager's
+          BOOT_COMPLETED-listening RescheduleReceiver so it doesn't reintroduce boot
+          persistence behavior even if the permission removal above is bypassed.
+        -->
+        <receiver
+            android:name="androidx.work.impl.background.systemalarm.RescheduleReceiver"
+            android:enabled="false"
+            tools:node="merge" />
 
     </application>
 </manifest>

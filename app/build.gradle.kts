@@ -3,6 +3,28 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 
+// Fail fast and loudly (instead of silently producing app-release-unsigned.apk) if
+// someone runs assembleRelease without a signing key configured. A debug-signed or
+// unsigned "release" APK is exactly the artifact that trips AV heuristics.
+//
+// Two ways to provide a signing key are recognized:
+//  1. ~/.gradle/gradle.properties: RELEASE_STORE_FILE / RELEASE_STORE_PASSWORD / etc.
+//  2. Android Studio's "Generate Signed Bundle / APK" wizard, which injects
+//     android.injected.signing.store.file (and friends) as project properties instead.
+tasks.matching { it.name == "assembleRelease" || it.name.startsWith("packageRelease") }.configureEach {
+    doFirst {
+        val hasManualConfig = project.findProperty("RELEASE_STORE_FILE") != null
+        val hasStudioWizardConfig = project.findProperty("android.injected.signing.store.file") != null
+        check(hasManualConfig || hasStudioWizardConfig) {
+            "No release signing key configured. Either:\n" +
+                "  1) Use Android Studio's Build > Generate Signed Bundle / APK wizard, or\n" +
+                "  2) Set RELEASE_STORE_FILE / RELEASE_STORE_PASSWORD / RELEASE_KEY_ALIAS / " +
+                "RELEASE_KEY_PASSWORD in ~/.gradle/gradle.properties " +
+                "(see app/build.gradle.kts signingConfigs for details)."
+        }
+    }
+}
+
 android {
     namespace = "com.glyphweather"
     compileSdk = 35
@@ -15,6 +37,23 @@ android {
         versionName = "1.0"
     }
 
+    signingConfigs {
+        create("release") {
+            // Set these in ~/.gradle/gradle.properties (NOT this file, and NOT committed):
+            //   RELEASE_STORE_FILE=/absolute/path/to/release.keystore
+            //   RELEASE_STORE_PASSWORD=...
+            //   RELEASE_KEY_ALIAS=...
+            //   RELEASE_KEY_PASSWORD=...
+            val storeFilePath = findProperty("RELEASE_STORE_FILE") as String?
+            if (storeFilePath != null) {
+                storeFile = file(storeFilePath)
+                storePassword = findProperty("RELEASE_STORE_PASSWORD") as String?
+                keyAlias = findProperty("RELEASE_KEY_ALIAS") as String?
+                keyPassword = findProperty("RELEASE_KEY_PASSWORD") as String?
+            }
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
@@ -22,6 +61,30 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            // Falls back to no signing config (build fails at packaging) if the
+            // gradle.properties keys above aren't set — that's intentional: we never
+            // want a release build to silently fall back to the debug keystore, since
+            // shipping a debug-signed APK is what triggers AV heuristics in the first place.
+            if (findProperty("RELEASE_STORE_FILE") != null) {
+                signingConfig = signingConfigs.getByName("release")
+            }
+        }
+    }
+
+    androidResources {
+        // Disable baseline profile to avoid INSTALL_BASELINE_PROFILE_FAILED on some devices
+        generateLocaleConfig = false
+    }
+
+    packaging {
+        jniLibs {
+            useLegacyPackaging = false
+        }
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            excludes += "/baseline-prof.txt"
+            excludes += "/baseline.prof"
+            excludes += "/baseline.profm"
         }
     }
 
