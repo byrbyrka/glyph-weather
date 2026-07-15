@@ -71,6 +71,17 @@ adb shell settings put global nt_glyph_interface_debug_enable 1
 - Geolocation (coarse/fine) — to determine where you are for the weather.
 - Notifications — mandatory foreground service notification.
 
+## Features
+
+- **Weather display** — current condition mapped to one of 7 Glyph animations.
+- **Shake to show** — shake the phone to briefly display a chosen metric:
+  temperature, UV index, precipitation probability, apparent temperature, or AQI.
+  Can be disabled in the app.
+- **Brightness control** — adjust Glyph Matrix brightness from the main screen.
+- **Scheduler** — automatically turn off the Glyph Matrix display during a
+  user-defined time interval (e.g. overnight).
+- **Home screen widget** — current weather, temperature, and a static Glyph preview.
+
 ## Structure
 
 ```

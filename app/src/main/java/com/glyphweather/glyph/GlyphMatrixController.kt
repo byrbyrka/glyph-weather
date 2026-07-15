@@ -5,6 +5,7 @@ import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import com.glyphweather.data.WeatherPrefs
 import com.nothing.ketchum.Glyph
 import com.nothing.ketchum.GlyphMatrixManager
 
@@ -17,7 +18,9 @@ class GlyphMatrixController(private val context: Context) {
     private var manager: GlyphMatrixManager? = null
     @Volatile private var connected = false
     @Volatile private var pendingFrame: IntArray? = null
+    @Volatile private var brightness: Int = WeatherPrefs.MAX_BRIGHTNESS
 
+    private val prefs = WeatherPrefs(context)
     private val mainHandler = Handler(Looper.getMainLooper())
 
     private val callback = object : GlyphMatrixManager.Callback {
@@ -78,14 +81,27 @@ class GlyphMatrixController(private val context: Context) {
         if (connected) push(grid)
     }
 
+    /** Updates the brightness multiplier applied to every frame. */
+    fun setBrightness(value: Int) {
+        brightness = value.coerceIn(0, WeatherPrefs.MAX_BRIGHTNESS)
+        pendingFrame?.let { show(it) }
+    }
+
     private fun push(grid: IntArray) {
+        val scaled = if (brightness == WeatherPrefs.MAX_BRIGHTNESS) grid else scale(grid, brightness)
         mainHandler.post {
             try {
-                manager?.setAppMatrixFrame(grid)
+                manager?.setAppMatrixFrame(scaled)
             } catch (t: Throwable) {
                 Log.e(TAG, "setAppMatrixFrame error", t)
             }
         }
+    }
+
+    private fun scale(grid: IntArray, brightness: Int): IntArray {
+        if (brightness == 0) return IntArray(grid.size)
+        val factor = brightness / WeatherPrefs.MAX_BRIGHTNESS.toFloat()
+        return IntArray(grid.size) { i -> (grid[i] * factor).toInt().coerceIn(0, 255) }
     }
 
     fun disconnect() {

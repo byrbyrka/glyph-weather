@@ -19,6 +19,7 @@ import com.glyphweather.data.WeatherPrefs
 import com.glyphweather.sensor.ShakeDetector
 import com.glyphweather.ui.MainActivity
 import com.glyphweather.weather.IconPack
+import com.glyphweather.weather.ShakeMetric
 import com.glyphweather.weather.WeatherCondition
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -53,6 +54,7 @@ class GlyphWeatherService : android.app.Service() {
         super.onCreate()
         prefs = WeatherPrefs(this)
         controller = GlyphMatrixController(this)
+        controller.setBrightness(prefs.glyphBrightness)
         controller.connect()
         createChannel()
         registerShakeDetector()
@@ -67,10 +69,40 @@ class GlyphWeatherService : android.app.Service() {
     }
 
     private fun onShakeDetected() {
-        val temp = prefs.temperatureC
-        if (temp.isNaN()) return
-        temperatureGrid = GlyphDigits.renderTemperature(temp)
+        if (!prefs.shakeEnabled) return
+        val grid = renderShakeMetric() ?: return
+        temperatureGrid = grid
         temperatureOverrideUntil = System.currentTimeMillis() + TEMPERATURE_DISPLAY_MS
+    }
+
+    private fun renderShakeMetric(): IntArray? {
+        return when (prefs.shakeMetric) {
+            ShakeMetric.TEMPERATURE -> {
+                val tempC = prefs.temperatureC
+                if (tempC.isNaN()) return null
+                GlyphDigits.renderTemperature(prefs.temperatureUnit.fromCelsius(tempC))
+            }
+            ShakeMetric.UV_INDEX -> {
+                val uv = prefs.uvIndex
+                if (uv.isNaN()) return null
+                GlyphDigits.renderNumber(Math.round(uv).toInt())
+            }
+            ShakeMetric.PRECIPITATION_PROBABILITY -> {
+                val prob = prefs.precipitationProbability
+                if (prob < 0) return null
+                GlyphDigits.renderNumber(prob.coerceIn(0, 100))
+            }
+            ShakeMetric.APPARENT_TEMPERATURE -> {
+                val feels = prefs.apparentTemperatureC
+                if (feels.isNaN()) return null
+                GlyphDigits.renderTemperature(prefs.temperatureUnit.fromCelsius(feels))
+            }
+            ShakeMetric.AQI -> {
+                val aqi = prefs.airQualityIndex
+                if (aqi < 0) return null
+                GlyphDigits.renderNumber(aqi)
+            }
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -99,8 +131,23 @@ class GlyphWeatherService : android.app.Service() {
         var lastCondition: WeatherCondition? = null
         var lastPack: IconPack? = null
         var animation: GlyphAnimation? = null
+        var wasBlocked = false
 
         while (scope.isActive) {
+            controller.setBrightness(prefs.glyphBrightness)
+
+            val blocked = prefs.isSchedulerBlocking()
+            if (blocked) {
+                if (!wasBlocked) {
+                    controller.show(IntArray(GlyphMatrix.CELLS))
+                    startForegroundCompat(NOTIF_ID, buildNotification(prefs.condition, schedulerOff = true))
+                }
+                wasBlocked = true
+                delay(SCHEDULER_POLL_MS)
+                continue
+            }
+            wasBlocked = false
+
             val overrideGrid = temperatureGrid
             if (overrideGrid != null && System.currentTimeMillis() < temperatureOverrideUntil) {
                 controller.show(overrideGrid)
@@ -139,6 +186,8 @@ class GlyphWeatherService : android.app.Service() {
                 if (prefs.condition != lastCondition || prefs.iconPack != lastPack) break
                 // Shake detected mid-animation: break out to show the temperature immediately
                 if (temperatureGrid != null && System.currentTimeMillis() < temperatureOverrideUntil) break
+                // Scheduler may have turned on while we were animating
+                if (prefs.isSchedulerBlocking()) break
 
                 controller.show(frame.grid)
                 delay(frame.durationMs.coerceAtLeast(30L))
@@ -164,17 +213,23 @@ class GlyphWeatherService : android.app.Service() {
         }
     }
 
-    private fun buildNotification(condition: WeatherCondition): Notification {
-        val temp = prefs.temperatureC
-        val tempText = if (temp.isNaN()) "" else " · ${Math.round(temp)}°C"
+    private fun buildNotification(condition: WeatherCondition, schedulerOff: Boolean = false): Notification {
+        val tempC = prefs.temperatureC
+        val unit = prefs.temperatureUnit
+        val tempText = if (tempC.isNaN()) "" else " · ${Math.round(unit.fromCelsius(tempC))}${unit.symbol}"
         val open = PendingIntent.getActivity(
             this, 0, Intent(this, MainActivity::class.java),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
         )
+        val contentText = if (schedulerOff) {
+            getString(R.string.status_scheduler_off)
+        } else {
+            condition.titleEn + tempText
+        }
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_stat_glyph)
             .setContentTitle(getString(R.string.app_name))
-            .setContentText(condition.titleEn + tempText)
+            .setContentText(contentText)
             .setOngoing(true)
             .setContentIntent(open)
             .setPriority(NotificationCompat.PRIORITY_LOW)
@@ -199,6 +254,7 @@ class GlyphWeatherService : android.app.Service() {
         private const val NOTIF_ID = 42
         private const val TEMPERATURE_DISPLAY_MS = 3000L
         private const val TEMPERATURE_POLL_MS = 200L
+        private const val SCHEDULER_POLL_MS = 60_000L
         const val ACTION_STOP = "com.glyphweather.action.STOP"
 
         fun start(context: Context) {

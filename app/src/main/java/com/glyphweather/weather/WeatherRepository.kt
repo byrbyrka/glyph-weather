@@ -37,14 +37,19 @@ class WeatherRepository(private val context: Context) {
                 urlTemplate = prefs.weatherUrlTemplate,
                 lat = loc.latitude,
                 lon = loc.longitude,
-                apiKey = prefs.weatherApiKey
+                apiKey = prefs.weatherApiKey,
+                fetchAirQuality = prefs.shakeMetric == ShakeMetric.AQI
             )
             Log.d(TAG, "Weather fetched: ${weather.condition}, ${weather.temperatureC}°C")
-            
+
             prefs.setWeather(
                 condition = weather.condition,
                 temperatureC = weather.temperatureC,
-                updated = System.currentTimeMillis()
+                updated = System.currentTimeMillis(),
+                uvIndex = weather.uvIndex,
+                precipitationProbability = weather.precipitationProbability,
+                apparentTemperatureC = weather.apparentTemperatureC,
+                airQualityIndex = weather.airQualityIndex
             )
             Result.Success(weather)
         } catch (e: CancellationException) {

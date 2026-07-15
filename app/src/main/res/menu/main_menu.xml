@@ -8,6 +8,11 @@
         app:showAsAction="never" />
 
     <item
+        android:id="@+id/action_units"
+        android:title="@string/action_units"
+        app:showAsAction="never" />
+
+    <item
         android:id="@+id/action_debug"
         android:title="@string/action_debug_menu"
         app:showAsAction="never" />

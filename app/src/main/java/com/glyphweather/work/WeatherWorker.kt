@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
+import com.glyphweather.ui.WeatherWidgetProvider
 import com.glyphweather.weather.WeatherRepository
 
 /**
@@ -21,11 +22,12 @@ class WeatherWorker(
             when (val result = repo.refresh()) {
                 is WeatherRepository.Result.Success -> {
                     Log.d(TAG, "WeatherWorker: Success")
+                    WeatherWidgetProvider.updateAll(applicationContext)
                     Result.success()
                 }
                 is WeatherRepository.Result.NoLocation -> {
                     Log.w(TAG, "WeatherWorker: No location available")
-                    Result.success() 
+                    Result.success()
                 }
                 is WeatherRepository.Result.Error -> {
                     Log.e(TAG, "WeatherWorker: Error", result.throwable)

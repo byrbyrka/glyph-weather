@@ -26,11 +26,15 @@ import com.glyphweather.glyph.GlyphMatrix
 import com.glyphweather.glyph.GlyphWeatherService
 import com.glyphweather.weather.IconPack
 import com.glyphweather.weather.OpenMeteoClient
+import com.glyphweather.weather.ShakeMetric
+import com.glyphweather.weather.TemperatureUnit
 import com.glyphweather.weather.WeatherCondition
 import com.glyphweather.work.WeatherScheduler
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.materialswitch.MaterialSwitch
 import com.google.android.material.textfield.TextInputEditText
+import com.google.android.material.timepicker.MaterialTimePicker
+import com.google.android.material.timepicker.TimeFormat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -95,10 +99,43 @@ class MainActivity : AppCompatActivity() {
             updatePreview()
             Toast.makeText(this, getString(R.string.icon_pack_switched, prefs.iconPack.titleEn), Toast.LENGTH_SHORT).show()
         }
+        binding.tempUnitButton.setOnClickListener {
+            showTempUnitMenu()
+        }
+
+        binding.brightnessSlider.value = prefs.glyphBrightness.toFloat()
+        binding.brightnessSlider.addOnChangeListener { _, value, fromUser ->
+            if (fromUser) {
+                prefs.glyphBrightness = value.toInt()
+                if (prefs.enabled) GlyphWeatherService.start(this)
+            }
+        }
+
+        binding.schedulerSwitch.isChecked = prefs.schedulerEnabled
+        binding.schedulerSwitch.setOnCheckedChangeListener { _, isChecked ->
+            prefs.schedulerEnabled = isChecked
+            updateSchedulerUi()
+            if (prefs.enabled) GlyphWeatherService.start(this)
+            val msg = if (isChecked) R.string.scheduler_enabled else R.string.scheduler_disabled
+            Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
+        }
+        binding.schedulerOffButton.setOnClickListener { showTimePicker(isOff = true) }
+        binding.schedulerOnButton.setOnClickListener { showTimePicker(isOff = false) }
+
+        binding.shakeSwitch.isChecked = prefs.shakeEnabled
+        binding.shakeSwitch.setOnCheckedChangeListener { _, isChecked ->
+            prefs.shakeEnabled = isChecked
+            updateShakeUi()
+            val msg = if (isChecked) R.string.shake_enabled else R.string.shake_disabled
+            Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
+        }
+        binding.shakeMetricButton.setOnClickListener { showShakeMetricDialog() }
 
         observeWork()
         updateUi()
         updatePreview()
+        updateSchedulerUi()
+        updateShakeUi()
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
@@ -183,8 +220,12 @@ class MainActivity : AppCompatActivity() {
         val condition = prefs.condition
         binding.conditionText.text = condition.titleEn
 
-        val temp = prefs.temperatureC
-        binding.tempText.text = if (temp.isNaN()) "—" else "${Math.round(temp)}°C"
+        val tempC = prefs.temperatureC
+        val unit = prefs.temperatureUnit
+        binding.tempText.text = if (tempC.isNaN()) "—" else {
+            val converted = unit.fromCelsius(tempC)
+            "${Math.round(converted)}${unit.symbol}"
+        }
 
         binding.updatedText.text = if (prefs.lastUpdated == 0L) {
             getString(R.string.updated_never)
@@ -198,11 +239,38 @@ class MainActivity : AppCompatActivity() {
         binding.toggleButton.text = getString(
             if (prefs.enabled) R.string.turn_off else R.string.turn_on
         )
-        binding.statusText.text = if (prefs.debugOverride) {
-            getString(R.string.status_test_mode)
-        } else {
-            getString(if (prefs.enabled) R.string.status_on else R.string.status_off)
+        binding.statusText.text = when {
+            prefs.debugOverride -> getString(R.string.status_test_mode)
+            prefs.enabled && prefs.isSchedulerBlocking() -> getString(R.string.status_scheduler_off)
+            prefs.enabled -> getString(R.string.status_on)
+            else -> getString(R.string.status_off)
         }
+    }
+
+    private fun updateSchedulerUi() {
+        val off = prefs.schedulerOffMinutes
+        val on = prefs.schedulerOnMinutes
+        binding.schedulerOffButton.text = getString(R.string.scheduler_off, off / 60, off % 60)
+        binding.schedulerOnButton.text = getString(R.string.scheduler_on, on / 60, on % 60)
+        binding.schedulerOffButton.isEnabled = prefs.schedulerEnabled
+        binding.schedulerOnButton.isEnabled = prefs.schedulerEnabled
+    }
+
+    private fun showTimePicker(isOff: Boolean) {
+        val currentMinutes = if (isOff) prefs.schedulerOffMinutes else prefs.schedulerOnMinutes
+        val picker = MaterialTimePicker.Builder()
+            .setTimeFormat(TimeFormat.CLOCK_24H)
+            .setHour(currentMinutes / 60)
+            .setMinute(currentMinutes % 60)
+            .setTitleText(if (isOff) R.string.scheduler_off else R.string.scheduler_on)
+            .build()
+        picker.addOnPositiveButtonClickListener {
+            val minutes = picker.hour * 60 + picker.minute
+            if (isOff) prefs.schedulerOffMinutes = minutes else prefs.schedulerOnMinutes = minutes
+            updateSchedulerUi()
+            if (prefs.enabled) GlyphWeatherService.start(this)
+        }
+        picker.show(supportFragmentManager, "time_picker")
     }
 
     /** Loads the animation for the current condition and loops it in the on-screen preview. */
@@ -340,6 +408,47 @@ class MainActivity : AppCompatActivity() {
                 prefs.weatherApiKey = ""
                 Toast.makeText(this, getString(R.string.weather_source_reset_done), Toast.LENGTH_SHORT).show()
                 WeatherScheduler.refreshNow(this)
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun showTempUnitMenu() {
+        val units = TemperatureUnit.entries.toTypedArray()
+        val names = units.map { it.symbol }.toTypedArray()
+        val current = prefs.temperatureUnit
+        val selectedIndex = units.indexOf(current)
+
+        MaterialAlertDialogBuilder(this)
+            .setTitle("Temperature Unit")
+            .setSingleChoiceItems(names, selectedIndex) { dialog, which ->
+                prefs.temperatureUnit = units[which]
+                updateUi()
+                Toast.makeText(this, "Unit changed to ${units[which].symbol}", Toast.LENGTH_SHORT).show()
+                dialog.dismiss()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun updateShakeUi() {
+        binding.shakeMetricButton.isEnabled = prefs.shakeEnabled
+        binding.shakeMetricButton.text = getString(R.string.shake_metric, prefs.shakeMetric.titleEn)
+    }
+
+    private fun showShakeMetricDialog() {
+        val metrics = ShakeMetric.entries.toTypedArray()
+        val names = metrics.map { it.titleEn }.toTypedArray()
+        val current = prefs.shakeMetric
+        val selectedIndex = metrics.indexOf(current)
+
+        MaterialAlertDialogBuilder(this)
+            .setTitle(R.string.shake_metric_dialog_title)
+            .setSingleChoiceItems(names, selectedIndex) { dialog, which ->
+                prefs.shakeMetric = metrics[which]
+                updateShakeUi()
+                if (prefs.enabled) WeatherScheduler.refreshNow(this)
+                dialog.dismiss()
             }
             .setNegativeButton("Cancel", null)
             .show()

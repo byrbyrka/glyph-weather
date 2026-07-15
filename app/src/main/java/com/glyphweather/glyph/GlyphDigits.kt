@@ -31,9 +31,15 @@ object GlyphDigits {
      * centered horizontally in the matrix. Values that don't fit (more than 3 characters)
      * are clamped to the nearest representable extreme.
      */
-    fun renderTemperature(temperatureC: Double): IntArray {
+    fun renderTemperature(temperatureC: Double): IntArray = renderNumber(Math.round(temperatureC).toInt())
+
+    /**
+     * Renders a generic integer value (temperature, UV, AQI, rain probability, etc.).
+     * Negative values are supported. Values above 999 or below -99 are clamped.
+     */
+    fun renderNumber(value: Int): IntArray {
         val grid = IntArray(GlyphMatrix.CELLS)
-        var rounded = Math.round(temperatureC).toInt()
+        var rounded = value
         if (rounded > 999) rounded = 999
         if (rounded < -99) rounded = -99
         var text = rounded.toString()

@@ -67,6 +67,17 @@
             android:exported="false"
             android:foregroundServiceType="location" />
 
+        <receiver
+            android:name=".ui.WeatherWidgetProvider"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/weather_widget_info" />
+        </receiver>
+
         <!--
           This app has no boot receiver of its own. Explicitly disable WorkManager's
           BOOT_COMPLETED-listening RescheduleReceiver so it doesn't reintroduce boot
