@@ -1,5 +1,8 @@
 # Glyph Weather — weather on Glyph Matrix (Nothing Phone (4a) Pro)
 
+<img width="780" height="516" alt="изображение" src="https://github.com/user-attachments/assets/e72f6787-a6cd-4c98-b172-87c558d12896" />
+
+
 An Android application that changes the image on the **Glyph Matrix** of the back panel of the
 Nothing Phone (4a) Pro depending on the current weather. Each weather condition
 corresponds to one of your animations (`glyph_weather_*.json`).
